@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import Spinner from './Spinner';
-import { ImCheckmark, ImCross } from 'react-icons/im';
-import CaptchaPopup from './CaptchaPopup';
-import ZkaptchaContext from './ZkaptchaContext';
-import { DEFAULT_CAPTCHA_ENDPOINT } from '../utils/constants';
-import { CaptchaObject } from './CaptchaPopup';
-import absintheLogo from '../../assets/absintheLogo.png';
-import { getEvents, submitTransaction } from '../utils/transaction';
-import { proofToSolidityCalldata } from '../utils/prover';
+import React, { useState, useEffect } from "react";
+import Spinner from "./Spinner";
+import { ImCheckmark, ImCross } from "react-icons/im";
+import CaptchaPopup from "./CaptchaPopup";
+import ZkaptchaContext from "./ZkaptchaContext";
+import { DEFAULT_CAPTCHA_ENDPOINT } from "../utils/constants";
+import { CaptchaObject } from "./CaptchaPopup";
+import absintheLogo from "../../assets/absintheLogo.png";
+import { verifyTransaction } from "../utils/transaction";
+import { proofToSolidityCalldata } from "../utils/prover";
 
 export enum ValidatorState {
   Loading,
@@ -15,7 +15,7 @@ export enum ValidatorState {
   Success,
   Idle,
   Prover,
-  Submitting
+  Submitting,
 }
 
 function Validator() {
@@ -35,18 +35,21 @@ function Validator() {
     }
     setCaptchaData(null);
     fetch(DEFAULT_CAPTCHA_ENDPOINT)
-      .then(response => {
+      .then((response) => {
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error("Network response was not ok");
         }
         return response.json();
       })
-      .then(data => {
+      .then((data) => {
         setCaptchaData(data);
         zc.setCaptchaData(data);
       })
-      .catch(error => {
-        console.error('There has been a problem with your fetch operation:', error);
+      .catch((error) => {
+        console.error(
+          "There has been a problem with your fetch operation:",
+          error
+        );
       });
   };
 
@@ -90,22 +93,29 @@ function Validator() {
                 <button
                   type="submit"
                   className="ztw-group ztw-relative ztw-w-full ztw-flex ztw-justify-center ztw-py-2 ztw-px-2 ztw-border ztw-border-transparent ztw-text-sm ztw-font-md ztw-rounded-md ztw-text-white ztw-bg-absinthe-green hover:bg-absinthe-green-dark"
-                  onClick={
-                    async () => {
-                      if (zc.proofResponse) {
-                        try {
-                          const { _proof, _pubSignals } = JSON.parse(proofToSolidityCalldata(zc.proofResponse.proof, zc.proofResponse.publicSignals))
-                          zc.setValidatorState(ValidatorState.Submitting)
-                          await submitTransaction(_proof, _pubSignals)
-                          zc.setValidatorState(ValidatorState.Success)
-                        } catch (error) {
-                          zc.setValidatorState(ValidatorState.Error)
-                        }
-                      } else {
-                        throw new Error("No proof response")
+                  onClick={async () => {
+                    if (zc.proofResponse) {
+                      try {
+                        const { _proof, _pubSignals } = JSON.parse(
+                          proofToSolidityCalldata(
+                            zc.proofResponse.proof,
+                            zc.proofResponse.publicSignals
+                          )
+                        );
+                        zc.setValidatorState(ValidatorState.Submitting);
+                        await verifyTransaction(
+                          zc.provider!,
+                          _proof,
+                          _pubSignals
+                        );
+                        zc.setValidatorState(ValidatorState.Success);
+                      } catch (error) {
+                        zc.setValidatorState(ValidatorState.Error);
                       }
+                    } else {
+                      throw new Error("No proof response");
                     }
-                  }
+                  }}
                 >
                   Submit Proof
                 </button>
@@ -147,17 +157,21 @@ function Validator() {
               href="https://absinthelabs.xyz"
               target="_blank"
               rel="noopener noreferrer"
-              className=''
+              className=""
             >
               {/* todo: figure out a better way to do image height */}
-              <img src={absintheLogo} alt="logo" className="ztw-mx-auto ztw-h-8" />
+              <img
+                src={absintheLogo}
+                alt="logo"
+                className="ztw-mx-auto ztw-h-8"
+              />
             </a>
             <div className="ztw-text-xs">
               {/* todo: put anchor links to the privacy and terms links */}
               <a className="ztw-text-black hover:ztw-text-gray-500" href="">
                 Privacy
-              </a>{' '}
-              -{' '}
+              </a>{" "}
+              -{" "}
               <a className="ztw-text-black hover:ztw-text-gray-500" href="">
                 Terms
               </a>

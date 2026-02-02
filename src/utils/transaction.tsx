@@ -1,76 +1,39 @@
-import { ethers } from "ethers"
-import { ZEEKAPTCHA_CHAIN_CONSTANTS } from "./constants"
+import { Eip1193Provider, BrowserProvider, getAddress } from "ethers";
+import { ZKWarden__factory } from "../types";
 
-export const submitTransaction = async (_proof: string[], _pubSignals: string[]) => {
-    const contractAddress = ZEEKAPTCHA_CHAIN_CONSTANTS.sepolia.address;
-    const abi = ZEEKAPTCHA_CHAIN_CONSTANTS.sepolia.abi;
+// send tx to zkWarden.verify
+export const verifyTransaction = async (
+  provider: Eip1193Provider,
+  _proof: string[],
+  _pubSignals: string[]
+) => {
+  const logPrefix = "utils/transaction::submitTransaction";
 
-    try {
-        if (!(window as any).ethereum) {
-            throw new Error('window.ethereum not found');
-        }
-        // Attempt to switch the Ethereum chain
-        await (window as any).ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: ZEEKAPTCHA_CHAIN_CONSTANTS.sepolia.chainId }],
-        });
+  // step 0: init provider from client
+  console.debug("%s\t%s", logPrefix, "init provider");
+  const ethProvider = new BrowserProvider(provider);
 
-        // Request accounts from the Ethereum provider
-        await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+  console.debug({ ethProvider });
 
-        // Create a provider and signer
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        const signerFromProvider = await provider.getSigner();
+  // step 1: init zkWarden contract
+  console.debug("%s\t%s", logPrefix, "init zkWarden AND TEST");
+  // @todo replace `address` from config
+  const zkWardenAddress = getAddress(
+    "0xa56Cc3AD92D64332b6911E25C68101F8fc001e62"
+  );
 
-        // Create a new contract instance with the signer
-        const contract = new ethers.Contract(contractAddress, abi, signerFromProvider);
+  const test = await ethProvider.getBalance(zkWardenAddress);
+  console.debug({ test });
+  const zkWarden = ZKWarden__factory.connect(zkWardenAddress, ethProvider);
+  console.debug({ zkWarden });
 
-        // Send the transaction
-        const tx = await contract.verifyProof(_proof, _pubSignals, { gasLimit: 350000 });
-        // Wait for the transaction to be mined
-        const receipt = await tx.wait();
-        console.log(`Tx Confirmed: https://sepolia.etherscan.io/tx/${receipt.hash}`);
+  // step 2: check contract is init correct by assert active store root
+  // step 2.0: get current captcha store merkle root
+  console.debug("%s\t%s", logPrefix, "get current captcha store merkle root");
+  const root = await zkWarden.getRoot();
+  console.debug({ root });
 
-        // Return the receipt once the transaction is confirmed
-        return true;
-    } catch (error) {
-        throw error;
-    }
-}
-
-
-    // //attempt2
-    // try {
-    //     console.log(signer)
-    //     const contract = new ethers.Contract(contractAddress, abi, signer)
-    //     const tx = await contract.verifyProof(_proof, _pubSignals, {gasLimit: 350000})
-    //     console.log(tx)
-    //     await tx.wait()
-    //     console.log(tx.hash)
-    // } catch (error) {
-    //     console.error(error);
-    //     throw error; 
-    // }
-
-
-export const getEvents = async (address: string) => {
-    const contractAddress = ZEEKAPTCHA_CHAIN_CONSTANTS.sepolia.address;
-    const abi = ZEEKAPTCHA_CHAIN_CONSTANTS.sepolia.abi;
-
-    if (!(window as any).ethereum) {
-        throw new Error('window.ethereum not found');
-    }
-
-    try {
-        await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
-        const provider = new ethers.BrowserProvider((window as any).ethereum);
-        const signer = await provider.getSigner();
-        const contract = new ethers.Contract(contractAddress, abi, signer);
-        const filter = contract.filters.CaptchaCompleted(address);
-        const events = await contract.queryFilter(filter);
-        return events;
-    } catch (error) {
-        console.error(error);
-        throw error; 
-    }
+  // step 3: send tx to zkWarden.verify
+  console.debug("%s\t%s", logPrefix, "send tx to zkWarden.verify");
+  // const tx = await zkWarden.verify(_proof, _pubSignals);
 };

@@ -10,9 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@web3modal/ethers": "^4.0.10",
+    "ethers": "^6.11.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "zeekaptcha": "^1.0.8"
+    "zeekaptcha": "file:../.."
   },
   "devDependencies": {
     "@types/react": "^18.2.15",

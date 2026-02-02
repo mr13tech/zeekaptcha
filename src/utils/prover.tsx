@@ -1,46 +1,83 @@
 // Define prover function
 
-import { PlonkProof, PublicSignals, SignalValueType, ZKArtifact } from 'snarkjs';
+import {
+  PlonkProof,
+  PublicSignals,
+  SignalValueType,
+  ZKArtifact,
+} from "snarkjs";
 
-import wasmCircuit from "../../assets/preimageInstant.wasm";
-import zkey from "../../assets/preimageInstant_final.zkey";
+import wasmCircuit from "../../assets/verify.wasm";
+import zkey from "../../assets/verify.zkey";
 
 export const doProve = async (
-  EOA_Address: string,
-  response: SignalValueType,
-  provided_hash: string
+  secret: string,
+  expectedMimc: string,
+  root: string,
+  sender: string
 ) => {
-  if (!window.snarkjs) {
-    throw new Error('snarkjs is not loaded yet');
-  }
-  // console.log(wasmCircuit)
-  // console.log(zkey)
   const fetchAndDecodeBinary = async (binary: string): Promise<ZKArtifact> => {
     try {
       const response = await fetch(`data:application/wasm;base64,${binary}`);
       const buffer = await response.arrayBuffer();
-      return new Uint8Array(buffer); 
+      return new Uint8Array(buffer);
     } catch (error) {
-      console.error('Error converting Base64 to Uint8Array', error);
-      return new Uint8Array(); 
+      console.error("Error converting Base64 to Uint8Array", error);
+      return new Uint8Array();
     }
   };
   const decodedWasm = await fetchAndDecodeBinary(wasmCircuit);
   const decodedZkey = await fetchAndDecodeBinary(zkey);
-  
+
+  console.debug({
+    secret,
+    expectedMimc,
+    root,
+    sender,
+  });
+
+  const secretBigInt = stringToBigInt(secret); // use bytes from string same as in golang
+  const expectedMimcBigInt = BigInt("0x" + expectedMimc); // use hex string
+  const rootBigInt = BigInt(root); // use hex string
+  const senderBigInt = BigInt(sender); // use hex string
+
+  console.debug({
+    secretBigInt,
+    expectedMimcBigInt,
+    rootBigInt,
+    senderBigInt,
+  });
+
   const { proof, publicSignals } = await window.snarkjs.plonk.fullProve(
-    { pkey: EOA_Address, response: response, provided_hash: provided_hash },
+    {
+      secret: secretBigInt.toString(10),
+      expectedMimc: expectedMimcBigInt.toString(10),
+      root: rootBigInt.toString(10),
+      sender: senderBigInt.toString(10),
+    },
     decodedWasm,
     decodedZkey
   );
   return { proof, publicSignals };
 };
 
+// @todo move to utils and add docstring
+// this func does same result as in golang:
+// captcha/builder.go:71 :: new(big.Int).SetBytes([]byte(str))
+function stringToBigInt(str: string): BigInt {
+  let bigInt = BigInt(0);
+  for (let i = 0; i < str.length; i++) {
+    const charCode = str.charCodeAt(i);
+    bigInt = (bigInt << BigInt(8)) | BigInt(charCode);
+  }
+  return bigInt;
+}
+
 export const proofToSolidityCalldata = (
   proof: PlonkProof,
   publicSignals: PublicSignals
 ) => {
-  const ignoreKeys = ['protocol', 'curve'];
+  const ignoreKeys = ["protocol", "curve"];
   let resultArray = [];
 
   for (let key in proof) {

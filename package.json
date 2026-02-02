@@ -1,6 +1,6 @@
 {
   "name": "zeekaptcha",
-  "version": "1.0.10",
+  "version": "1.0.12",
   "description": "",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
@@ -8,6 +8,7 @@
   "type": "module",
   "scripts": {
     "build": "rollup -c",
+    "dev": "rollup -c -w",
     "format": "prettier --write .",
     "check": "prettier --check ."
   },
@@ -26,7 +27,7 @@
     "@types/snarkjs": "^0.7.6",
     "autoprefixer": "^10.4.16",
     "axios": "^1.6.0",
-    "ethers": "^6.8.1",
+    "ethers": "^6.11.1",
     "postcss": "^8.4.31",
     "prettier": "^3.0.3",
     "react": "^18.2.0",
